@@ -278,7 +278,7 @@ Now Both the Load Balancers are working good
 ![image](https://github.com/user-attachments/assets/e480d1ea-234d-4258-ac8c-fbfa4f2907ff)
 
 ```js
-export const baseUrl = process.env.REACT_APP_BACKEND_URL || "https://back.adarshkumars.co.in";
+export const baseUrl = process.env.REACT_APP_BACKEND_URL || "http://back.jidendir.in";
 ```
 
 Now you can access the application via domain names:
