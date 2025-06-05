@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  tmbackend:
+    build: ./backend
+    container_name: tmbe1
+    ports:
+      - '3005:3001'
+
+  tmfrontend:
+    build: ./backend
+    container_name: tmfe1
+    ports:
+      - '3000:3000' 
+    depends_on:
+      - tmbackend
+      
