@@ -8,7 +8,7 @@ services:
       - '3005:3001'
 
   tmfrontend:
-    build: ./backend
+    build: ./frontend
     container_name: tmfe1
     ports:
       - '3000:3000' 

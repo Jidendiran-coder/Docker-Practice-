@@ -4,7 +4,7 @@ COPY package*.json .
 RUN npm install
 COPY . .
 ENV PORT=3001
-ENV MONGO_URI=mongodb+srv://admin:admin@cluster0.zqyqy.mongodb.net/myFirstDatabase?retryWrites=true&w=majority&appName=Cluster0
+ENV MONGO_URI=mongodb+srv://joel:pjwOUfAbRdSGy7OU@cluster-mern.c0kcm.mongodb.net
 EXPOSE 3001
 CMD ["node", "index.js"]
 
