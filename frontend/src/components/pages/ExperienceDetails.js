@@ -13,7 +13,7 @@ export default function ExperienceDetails(props) {
 
   useEffect(() => {
     fetchData();
-  }, [id]);
+  }, [fetchData]);
 
   const fetchData = async () => {
     try {
