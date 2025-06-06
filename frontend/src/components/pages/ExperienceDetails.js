@@ -1,5 +1,5 @@
 import axios from "axios";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { baseUrl } from "../../url";
 
@@ -11,11 +11,7 @@ export default function ExperienceDetails(props) {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const res = await axios.get(`${baseUrl}/trip/${id}`);
       setData(res.data);
@@ -23,7 +19,11 @@ export default function ExperienceDetails(props) {
     } catch (err) {
       setError("Failed to load trip details");
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
