@@ -1,4 +1,4 @@
-name: Deploy HTML to EC2 on Push
+name: Build and Deploy Docker Image to EC2
 
 on:
   push:
@@ -6,33 +6,34 @@ on:
       - main
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source code
-        uses: actions/checkout@v4
+    - name: Checkout Code
+      uses: actions/checkout@v4
 
-      - name: Set up SSH key
-        run: |
-          echo "${{ secrets.EC2_SSH_KEY }}" > private_key.pem
-          chmod 600 private_key.pem
+    - name: Log in to Docker Hub
+      run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-      - name: Backup old HTML & deploy new one
-        run: |
-          REMOTE_USER="${{ secrets.EC2_USER }}"
-          REMOTE_HOST="${{ secrets.EC2_HOST }}"
-          TARGET_PATH="${{ secrets.EC2_TARGET_PATH }}"
-          FILE_NAME="index.html"
+    - name: Build Docker Image
+      run: |
+        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/docker_learning:latest .
 
-          echo "Backing up old file on EC2..."
-          ssh -i private_key.pem -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST "cp $TARGET_PATH/$FILE_NAME $TARGET_PATH/${FILE_NAME}.bak || echo 'No previous file to back up.'"
+    - name: Push Docker Image to Docker Hub
+      run: |
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/docker_learning:latest
 
-          echo "Copying new file to EC2..."
-          scp -i private_key.pem -o StrictHostKeyChecking=no ./$FILE_NAME $REMOTE_USER@$REMOTE_HOST:$TARGET_PATH/
+    - name: Add SSH Key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
 
-          echo "Restarting Nginx on EC2..."
-          ssh -i private_key.pem -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST "sudo systemctl restart nginx"
-
-      - name: Clean up private key
-        run: rm -f private_key.pem
+    - name: Run Docker Container on EC2
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/docker_learning:latest
+          docker stop app || true && docker rm app || true
+          docker run -d --name app -p 80:80 ${{ secrets.DOCKERHUB_USERNAME }}/docker_learning:latest
+        EOF
