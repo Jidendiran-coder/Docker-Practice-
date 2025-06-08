@@ -18,9 +18,21 @@ jobs:
           echo "${{ secrets.EC2_SSH_KEY }}" > private_key.pem
           chmod 600 private_key.pem
 
-      - name: Copy HTML file to EC2
+      - name: Backup old HTML & deploy new one
         run: |
-          scp -i private_key.pem -o StrictHostKeyChecking=no ./index.html ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:${{ secrets.EC2_TARGET_PATH }}
+          REMOTE_USER="${{ secrets.EC2_USER }}"
+          REMOTE_HOST="${{ secrets.EC2_HOST }}"
+          TARGET_PATH="${{ secrets.EC2_TARGET_PATH }}"
+          FILE_NAME="index.html"
+
+          echo "Backing up old file on EC2..."
+          ssh -i private_key.pem -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST "cp $TARGET_PATH/$FILE_NAME $TARGET_PATH/${FILE_NAME}.bak || echo 'No previous file to back up.'"
+
+          echo "Copying new file to EC2..."
+          scp -i private_key.pem -o StrictHostKeyChecking=no ./$FILE_NAME $REMOTE_USER@$REMOTE_HOST:$TARGET_PATH/
+
+          echo "Restarting Nginx on EC2..."
+          ssh -i private_key.pem -o StrictHostKeyChecking=no $REMOTE_USER@$REMOTE_HOST "sudo systemctl restart nginx"
 
       - name: Clean up private key
         run: rm -f private_key.pem
