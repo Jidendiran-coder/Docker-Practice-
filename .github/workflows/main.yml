@@ -1,4 +1,4 @@
-name: Build and Deploy Docker Image to EC2
+name: Deploy Node.js backend to EC2 on push
 
 on:
   push:
@@ -6,34 +6,32 @@ on:
       - main
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Log in to Docker Hub
-      run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+      - name: Set up SSH key
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > private_key.pem
+          chmod 600 private_key.pem
 
-    - name: Build Docker Image
-      run: |
-        docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/docker_learning:latest .
+      - name: Copy backend folder to EC2 (to /home/EC2_USER/backend)
+        run: |
+          scp -i private_key.pem -o StrictHostKeyChecking=no -r ./backend ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/home/${{ secrets.EC2_USER }}/
 
-    - name: Push Docker Image to Docker Hub
-      run: |
-        docker push ${{ secrets.DOCKERHUB_USERNAME }}/docker_learning:latest
+      - name: Install dependencies and restart app
+        run: |
+          ssh -i private_key.pem -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            cd /home/${{ secrets.EC2_USER }}/backend
+            npm install
+            # Kill existing node processes (you can adjust this if needed)
+            pkill -f "node index.js" || echo "No node process found"
+            # Start the app in background, redirect output (adjust as needed)
+            nohup node index.js > app.log 2>&1 &
+          EOF
 
-    - name: Add SSH Key
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-
-    - name: Run Docker Container on EC2
-      run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/docker_learning:latest
-          docker stop app || true && docker rm app || true
-          docker run -d --name app -p 80:80 ${{ secrets.DOCKERHUB_USERNAME }}/docker_learning:latest
-        EOF
+      - name: Clean up private key
+        run: rm -f private_key.pem
